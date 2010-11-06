@@ -1,0 +1,208 @@
+<?php
+/**
+ * @file
+ *   Generate Related Posts block.`
+ */
+ 
+/*******************************
+TODO create an swsngp.install
+
+.INSTALL
+
+ADD THESE PERMS FOR SITE MANAGERS: 
+administer CRM API
+view user contact information
+administer NGP API settings
+
+// Enable SWS NGP block on admin toolbar
+
+**********************************/
+
+/**
+ * Implementation of hook_help()
+ */
+function swsngp_help($path, $arg) {
+  if ($path == 'admin/help#swsngp') {
+    $txt = 'Provide NGP integration for SWS sites.';
+    $output = t($txt);
+    return $output;
+  }
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function swsngp_init() {
+  $file_path = drupal_get_path('module', 'swsngp') .'/swsngp.css';
+  drupal_add_css($file_path);
+}
+
+
+/**
+ * Implementation of hook_menu_alter().
+ * 
+ * NGP provides a form to take credit card donations
+ * at crmapi/contribute. It assumes that if you use
+ * NGP you will have SSL set up and use NGP for credit
+ * card processing. SSL + Aegir is still experimental
+ * as of 7/10, so many Owh subscribers won't be using
+ * NGP's internal form for credit card processing. 
+ * 
+ * This menu_alter denies access to the crmapi/contribute
+ * page unless the user has been granted 'contribute'
+ * permissions.
+ */
+/*
+// todo Revisit if there's a way to use hook_menu_alter here. 
+function swsngp_menu_alter(&$items) {
+  // NOTE: This doesn't work. It always returns false. 
+  // I assume it has to do with this being the only 
+  // non admin menu declaired by crmapi: 
+  // $items['crmapi/%crmapi_section']
+  $items['crmapi/contribute']['access arguments'] = array('sws contribute');
+
+  return $items;
+}
+// */
+
+/**
+ * Implementation of hook_form_alter().
+ * 
+ * This prevents people from making unsecure
+ * contributions. It's a work around, since hook_menu_alter()
+ * doesn't work right here. See the note above re. hook_menu_alter()
+ * for additional documentation and details. 
+ */
+function swsngp_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'crmapi_contact_form' && arg(1) == 'contribute') {
+    if (!user_access('sws contribute')) {
+      $form = array();
+      $form['message'] = array(
+        '#type' => 'item',
+        '#value' => t("Sorry. We can't take contributions "
+                     ."through this web page. Please contact "
+                     ."the website administrator. "),
+      );
+    }
+  }
+}
+
+
+/**
+ * Implementation of hook_perm().
+ */
+function swsngp_perm() {
+  return array('sws contribute');
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function swsngp_block($op = 'list', $delta = 0, $edit = array()) {
+  if ($op == 'list') {
+    $blocks[0]['info'] = t('SWS NGP');
+    $blocks[0]['admin'] = TRUE;
+    return $blocks;
+  } else if ($op == 'view') {
+    //  Switch blocks
+    switch($delta) {
+        case 0:
+          $items = swsngp_content();
+          $subject = t('NGP');
+          $block['subject'] = $subject;
+          $block['content'] = theme('swsngp_block', $items);
+        break;
+    }
+  return $block;
+  }
+}
+
+/**
+ *  Implementation of hook_theme().
+ */
+function swsngp_theme() {
+  return array(
+    'swsngp_block' => array(
+      'arguments' => array('items' => NULL),
+    ),
+  );
+}
+
+/**
+ * Theme callback for hook_theme() 'swsngp_block'
+ * 
+ * note: .menu and .leaf are standard admin 
+ * toolbar classes
+ * 
+ * @param
+ *  $items, array( 
+ *    0 => array(
+ *      'perm' => required permission,
+ *      'path' => path of link,
+ *      'txt' => text for link
+ *    ),
+ *  );
+ * 
+ * @return
+ *  $output, html
+ */
+function theme_swsngp_block($items) {
+  // @todo Should these items be real menu 
+  // items for any reason?
+  $output = '';
+  $output.= '<ul class="menu">';
+
+  foreach($items as $item) {
+    $perm = $item['perm'];
+    $txt = $item['txt'];
+    $path = $item['path'];
+    if (user_access($perm)) {
+      $link = l($txt, $path);
+      $output .= '<li class="leaf">'. $link .'</li>';
+    }
+  }
+
+  $output .= '</ul>';
+  
+  return $output;
+}
+
+
+/**
+ * @param
+ *  $block_name, string indicating which block is being built.
+ * 
+ * @return
+ *  $items, array of menu items for Admin Toolbar to pass to theme function
+ *  $items = array(0 => array('perm' => x, 'path' => y, 'txt' => z));
+ */
+function swsngp_content() {
+  $items = array();
+
+  // CRM API Settings
+  $items[0]['perm'] = 'administer CRM API';
+  $items[0]['txt'] = t('CRM API Settings');
+  $items[0]['path'] = 'admin/settings/crmapi';
+
+  // NGP COO/CWP Settings
+  $items[1]['perm'] = 'administer NGP API settings';
+  $items[1]['txt'] = t('NGP Settings');
+  $items[1]['path'] = 'admin/settings/crmngp';
+
+  // Volunteer
+  $items[2]['perm'] = 'access content';
+  $items[2]['txt'] = t('Volunteer');
+  $items[2]['path'] = 'crmapi/volunteer';
+
+  // Subscribe 
+  $items[3]['perm'] = 'access content';
+  $items[3]['txt'] =  t('Subscribe'); 
+  $items[3]['path'] = 'crmapi/subscribe';
+
+  // Contribute
+  $items[4]['perm'] = 'sws contribute';
+  $items[4]['txt'] =  t('Contribute'); 
+  $items[4]['path'] = 'crmapi/contribute';
+
+  return $items;
+}

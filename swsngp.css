@@ -1,0 +1,28 @@
+/** Subscribe block **/ 
+  .region-header .block-crmngp
+  {
+    float: right;
+    margin-right: 20px;
+  }
+
+  .region-header .block-crmngp h3
+  {
+    color: white;
+    font-family: arial;
+    margin-top: 12px;
+  } 
+
+/*********
+  Note: This is currently handled in whitehouse.css.
+
+  .region-header .block-crmngp h3 .modttlred,
+  .region-header .block-crmngp h3 .modttlblue 
+  {
+    font-size: 14px;
+  }
+
+  .region-header .block-crmngp br
+  {
+    line-height: 0px;
+  }
+********/
